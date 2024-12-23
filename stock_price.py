@@ -35,7 +35,6 @@ position_placeholder = st.empty()
 pnl_placeholder = st.empty()
 
 def calculate_bar_range(data):
-    print(f"Calculated bar range: {max(data) - min(data)}")
     return max(data) - min(data)
 
 def check_trade_conditions(current_price):
@@ -44,7 +43,6 @@ def check_trade_conditions(current_price):
     bar_start = current_time.replace(minute=current_minute - (current_minute % 5), second=0, microsecond=0)
     
     if len(st.session_state.bar_data) < 2:
-        print("Not enough bar data for trade condition check.")
         return None
     
     current_bar = st.session_state.bar_data[-1]
@@ -55,10 +53,8 @@ def check_trade_conditions(current_price):
     
     if current_range > previous_range and (current_time - bar_start).total_seconds() < 180:
         if current_price > current_bar['prices'][0]:
-            print(f"Trade signal: LONG at price {current_price}")
             return 'LONG'
         elif current_price < current_bar['prices'][0]:
-            print(f"Trade signal: SHORT at price {current_price}")
             return 'SHORT'
     
     return None
@@ -68,8 +64,22 @@ def execute_trade(trade_type, current_price):
     st.session_state.entry_price = current_price
     st.session_state.stop_loss = current_price * (0.9925 if trade_type == 'LONG' else 1.0075)
     st.session_state.take_profit = current_price * (1.01 if trade_type == 'LONG' else 0.99)
-    print(f"Executed trade: {trade_type} at price {current_price} with stop loss {st.session_state.stop_loss} and take profit {st.session_state.take_profit}")
     position_placeholder.write(f"Position: {st.session_state.position}")
+
+def display_trade_details():
+    if 'position' in st.session_state:  # Ensure the position exists in session state
+        trade_details = {
+            "Position": st.session_state.position,
+            "Entry Price": st.session_state.entry_price,
+            "Stop Loss": st.session_state.stop_loss,
+            "Take Profit": st.session_state.take_profit
+        }
+        
+        # Display trade details
+        for key, value in trade_details.items():
+            st.write(f"{key}: {value}")
+    else:
+        st.write("No trade executed yet.")
 
 def check_exit_conditions(current_price):
     if st.session_state.position is None:
@@ -80,17 +90,18 @@ def check_exit_conditions(current_price):
         pnl = -pnl
     
     if pnl <= -0.0075:  # Stop loss at 0.75%
-        print(f"Exited position due to stop loss. P&L: {pnl:.2%}")
         st.session_state.position = None
         pnl_placeholder.write(f"Exited position. P&L: {pnl:.2%}")
         return True
     elif pnl >= 0.01 or abs(current_price - st.session_state.entry_price) >= 1.5:  # Take profit at 1% or $1.5
-        print(f"Exited position due to take profit. P&L: {pnl:.2%}")
+        
         st.session_state.position = None
-        pnl_placeholder.write(f"Exited position. P&L: {pnl:.2%}")
-        return True
+        pnl_placeholder.write(f"Exited position. P&L: {pnl:.2%}") 
+        return True 
     
     return False
+
+
 
 # WebSocket callback functions
 def on_message(ws, message):
@@ -101,7 +112,7 @@ def on_message(ws, message):
                 current_price = item['p']
                 st.session_state.price = current_price
                 st.session_state.volume = item['v']
-                print(f"Received price update: {current_price} and volume: {st.session_state.volume}")
+                
 
 
                 # Update Streamlit UI
@@ -123,21 +134,22 @@ def on_message(ws, message):
                     trade_signal = check_trade_conditions(current_price)
                     if trade_signal:
                         execute_trade(trade_signal, current_price)
+                        display_trade_details()
                 else:
                     if check_exit_conditions(current_price):
+                        st.session_state.position = None
                         position_placeholder.write("No position")
+                        display_trade_details()
 
 def on_error(ws, error):
-    print(f"WebSocket Error: {error}")
     st.error(f"WebSocket Error: {error}")
 
 def on_close(ws):
-    print("WebSocket connection closed")
     st.write("WebSocket connection closed")
 
 def on_open(ws):
     ws.send(json.dumps({"type":"subscribe", "symbol": symbol}))
-    print(f"Subscribed to {symbol} data via WebSocket")
+
 
 # Function to create WebSocket connection
 def connect_websocket():
@@ -164,8 +176,14 @@ st.write(f"Industry: {info.get('industry', 'N/A')}")
 
 # Display historical data
 st.subheader("Historical Data")
-historical_data = stock.history(period="5d")
+historical_data = stock.history(period="1d", interval= "5m")
 st.line_chart(historical_data['Close'])
+
+# Display trade details below historical data
+st.subheader("Trade Details")
+display_trade_details()
 
 # Keep the app running
 st.empty()
+
+
