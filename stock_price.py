@@ -5,8 +5,13 @@ import json
 import threading
 import pandas as pd
 from datetime import datetime, timedelta
+import time 
+
+bar_data = []
 
 # Initialize Streamlit session state
+if 'bar_data' not in st.session_state:
+    st.session_state.bar_data = []
 if 'symbol' not in st.session_state:
     st.session_state.symbol = "TSLA"
 if 'price' not in st.session_state:
@@ -21,8 +26,7 @@ if 'stop_loss' not in st.session_state:
     st.session_state.stop_loss = 0.0
 if 'take_profit' not in st.session_state:
     st.session_state.take_profit = 0.0
-if 'bar_data' not in st.session_state:
-    st.session_state.bar_data = []
+
 
 # Streamlit UI
 st.title("Real-Time Stock Trading Bot")
@@ -60,6 +64,7 @@ def check_trade_conditions(current_price):
     return None
 
 def execute_trade(trade_type, current_price):
+    print("===============================we are in execute trade function======================================")
     st.session_state.position = trade_type
     st.session_state.entry_price = current_price
     st.session_state.stop_loss = current_price * (0.9925 if trade_type == 'LONG' else 1.0075)
@@ -106,41 +111,73 @@ def check_exit_conditions(current_price):
 # WebSocket callback functions
 def on_message(ws, message):
     data = json.loads(message)
+    print('==========================here is the data from the server==============================', data)
     if 'data' in data:
+        print('=================================================================================================')
         for item in data['data']:
+            print('++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++++')
             if item['s'] == symbol:
+                print('------------------------------------------------------------------------------------------------------------')
                 current_price = item['p']
                 st.session_state.price = current_price
                 st.session_state.volume = item['v']
                 
 
-
+                print('££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££££')
                 # Update Streamlit UI
-                price_placeholder.write(f"Price: ${st.session_state.price:.2f}")
-                volume_placeholder.write(f"Volume: {st.session_state.volume}")
+                #price_placeholder.write(f"Price: ${st.session_state.price:.2f}")
+                #volume_placeholder.write(f"Volume: {st.session_state.volume}")
                 
+                print(f"Price: ${st.session_state.price:.2f}")
+                print(f"Volume: {st.session_state.volume}")
+                print("@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@@")
                 # Update bar data
                 current_time = datetime.now()
+                print('[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[[]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]]')
                 current_minute = current_time.minute
+                print('!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!!')
                 bar_start = current_time.replace(minute=current_minute - (current_minute % 5), second=0, microsecond=0)
+                print('===========================Checking the value in message function======================================================')
+
+
+                print('bar_start', bar_start, 'Type', type(bar_start))
+                print('current_price', current_price, 'Type', type(current_price))
                 
-                if not st.session_state.bar_data or st.session_state.bar_data[-1]['start_time'] != bar_start:
-                    st.session_state.bar_data.append({'start_time': bar_start, 'prices': [current_price]})
+                #print('Before update - bar_data', st.session_state.bar_data, 'Type', type(st.session_state.bar_data))
+                #if not st.session_state.bar_data or st.session_state.bar_data[-1]['start_time'] != bar_start:
+                #    st.session_state.bar_data.append({'start_time': bar_start, 'prices': [current_price]})
+                #else:
+                #    st.session_state.bar_data[-1]['prices'].append(current_price)
+                
+                if not bar_data or bar_data[-1]['start_time'] != bar_start:
+                    bar_data.append({'start_time': bar_start, 'prices':[current_price]})
                 else:
-                    st.session_state.bar_data[-1]['prices'].append(current_price)
+                    bar_data[-1]['prices'].append(current_price)
                 
+                st.session_state.bar_data = bar_data
+
+
+                print('After update - bar_data', st.session_state.bar_data, 'Type', type(st.session_state.bar_data))
+
+                print('=======================Checking the value after in message function===========================================================================')
+
                 # Check for trade conditions
+                if 'postion' not in st.session_state:
+                    st.session_state.position = None 
+
                 if st.session_state.position is None:
                     trade_signal = check_trade_conditions(current_price)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
                     if trade_signal:
                         execute_trade(trade_signal, current_price)
                         display_trade_details()
+                        time.sleep(60)
                 else:
                     if check_exit_conditions(current_price):
                         st.session_state.position = None
                         position_placeholder.write("No position")
                         display_trade_details()
-
+  
 def on_error(ws, error):
     st.error(f"WebSocket Error: {error}")
 
@@ -162,7 +199,7 @@ def connect_websocket():
     ws.run_forever()
 
 # Start WebSocket connection in a separate thread
-websocket_thread = threading.Thread(target=connect_websocket)
+websocket_thread = threading.Thread(target=connect_websocket, daemon = True)
 websocket_thread.start()
 
 # Display additional stock information using yfinance
