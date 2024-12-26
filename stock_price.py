@@ -65,12 +65,36 @@ def check_trade_conditions(current_price):
 
 def execute_trade(trade_type, current_price):
     print("===============================we are in execute trade function======================================")
+    #st.session_state.position = trade_type
+    #st.session_state.entry_price = current_price
+    #st.session_state.stop_loss = current_price * (0.9925 if trade_type == 'LONG' else 1.0075)
+    #st.session_state.take_profit = current_price * (1.01 if trade_type == 'LONG' else 0.99)
+    #position_placeholder.write(f"Position: {st.session_state.position}")
+    print("=============================== Entering execute_trade function ======================================")
+    
+    # Update session state with trade details
     st.session_state.position = trade_type
     st.session_state.entry_price = current_price
-    st.session_state.stop_loss = current_price * (0.9925 if trade_type == 'LONG' else 1.0075)
-    st.session_state.take_profit = current_price * (1.01 if trade_type == 'LONG' else 0.99)
-    position_placeholder.write(f"Position: {st.session_state.position}")
-
+    
+    # Set stop loss and take profit based on trade type
+    if trade_type == 'LONG':
+        st.session_state.stop_loss = current_price * 0.9925  # 0.75% below entry price
+        st.session_state.take_profit = current_price * 1.01   # 1% above entry price
+    elif trade_type == 'SHORT':
+        st.session_state.stop_loss = current_price * 1.0075  # 0.75% above entry price
+        st.session_state.take_profit = current_price * 0.99   # 1% below entry price
+    else:
+        st.write("Invalid trade type.")
+        return
+    
+    # Update the trade details in the UI (position, entry price, stop loss, take profit)
+    with position_placeholder.container():
+        st.write(f"Position: {st.session_state.position}")
+        st.write(f"Entry Price: {st.session_state.entry_price}")
+        st.write(f"Stop Loss: {st.session_state.stop_loss}")
+        st.write(f"Take Profit: {st.session_state.take_profit}")
+    
+    print("=============================== Trade executed successfully ======================================")
 def display_trade_details():
     if 'position' in st.session_state:  # Ensure the position exists in session state
         trade_details = {
@@ -168,10 +192,33 @@ def on_message(ws, message):
                 if st.session_state.position is None:
                     trade_signal = check_trade_conditions(current_price)
                     print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+                    print('=================================The trade signal that is long or short===========================', trade_signal)
+
                     if trade_signal:
+                        print('=================================execute_trade_execute_trade_execute_trade_execute_trade_execute_trade==============================================')
                         execute_trade(trade_signal, current_price)
+                        print('==============================traded successfully==============================================================')
                         display_trade_details()
-                        time.sleep(60)
+                        #time.sleep(60)
                 else:
                     if check_exit_conditions(current_price):
                         st.session_state.position = None
